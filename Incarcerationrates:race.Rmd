@@ -1,0 +1,162 @@
+---
+title: "incarceration data"
+output: html_document
+date: "2024-08-31"
+---
+
+```{r setup}
+#first start by getting your working directory 
+getwd()
+#set the working directory to the location of data storage 
+setwd("/Users/morro/Documents/Advanced data analytics ")#there's a space here due to when I saved the file "Advanced data analytics", I added a space at the end of the file on accident 
+#load appropriate library to manipulate dataset
+library(tidyr)
+library(dplyr)
+#upload data to R studios 
+pop_incom_educ_state <- read.csv("incarceration3.csv")
+
+race_rate <- read.csv("incarcrate3.csv")
+
+```
+
+
+
+```{r }
+#merge the two datasets 
+incar_merged <- merge(race_rate, pop_incom_educ_state, by = "state", all = TRUE)
+
+#creating a visual for the data we have so far 
+library(ggplot2)
+#convert this variable from a character to numeric 
+incar_merged$white.Black.inc.rate <- as.numeric(incar_merged$white.Black.inc.rate)
+incar_merged$White.Hisp.inc.rate <- as.numeric(incar_merged$White.Hisp.inc.rate)
+
+#create grouped bar plot to compare incarceration rate ratios by state 
+incar_merged$white.Black.inc.rate <- round(incar_merged$white.Black.inc.rate, 3)
+incar_merged$White.Hisp.inc.rate <- round(incar_merged$White.Hisp.inc.rate, 3)
+
+# Plot for White-to-Black incarceration rate ratio
+ggplot(incar_merged, aes(x = state)) +
+  geom_bar(aes(y = white.Black.inc.rate, fill = "white to black"), stat = "identity", position = "dodge") +
+  labs(title = "Comparison of White to Black Incarceration Rate Ratios by State",
+       x = "State", y = "Incarceration Rate Ratio") +
+  scale_fill_manual(values = c("white to black" = "blue")) +
+  theme(axis.text.y = element_text(size = 4),  # Reduce the y-axis (state) label size
+        axis.text.x = element_text(size = 8),   # Rotate labels and reduce size
+        plot.title = element_text(size = 14, face = "bold")) +  # Adjust title size
+  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +  # Add margin around the plot
+  coord_flip()  # Keep the flipped coordinates for better label readability
+
+
+# Plot for White-to-Hispanic incarceration rate ratio
+ggplot(incar_merged, aes(x = state)) +
+  geom_bar(aes(y = White.Hisp.inc.rate, fill = "white to Hispanic"), stat = "identity", position = "dodge") +
+  labs(title = "Comparison of White to Hispanic Incarceration Rate Ratios by State",
+       x = "State", y = "Incarceration Rate Ratio") +
+  scale_fill_manual(values = c("white to Hispanic" = "red")) +
+  theme(axis.text.y = element_text(size = 4),  # Reduce the y-axis (state) label size
+        axis.text.x = element_text(size = 8),  # Rotate labels and reduce size
+        plot.title = element_text(size = 14, face = "bold")) +  # Adjust title size
+  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +  # Add margin around the plot
+  coord_flip()  # Keep the flipped coordinates for better label readability
+
+```
+
+
+
+
+
+```{r}
+#run a regression on your data 
+#make sure all of your variables are numeric 
+#run a regression for white-to-black incarceration given educ and income
+
+model_white_black <- lm(white.Black.inc.rate ~ income.ratio.whites.blacks, data = incar_merged)
+
+summary(model_white_black)
+
+
+
+```
+white_to_black incarc. rate = 0.45890 -0.15529(income_ratio_white_to_black)
+
+Intercept: 0.045890 is the expeted value of the white to black incarceration rate ratio when the income ratio between whites and Blacks is 0. however this is realistically the starting point of our regression line 
+
+Slope: the slope of -0.15529 means that for every one unit increase in the white to black income ratio, the white to black incarceration rate ratio is expected to decrease by 0.15529 units. suggesting that as the income disparity between whites and blacks increases, the incarceration ratio favors whites (fewer white incarcerations relative to Black)
+
+pvalue: 0.00286, statistically significant at the 1% level
+
+```{r }
+model_white_black_edu <- lm(white.Black.inc.rate ~ educ.rate.white.black, data = incar_merged)
+
+summary(model_white_black_edu)
+
+
+```
+white_to_black incarc. rate = 0.30662 -0.08564(educ_whit_black)
+
+intercept: an intercept of 0.30662 means that if the education level (high school or higher) is the same for both groups, the incarceration rate ratio would be approximately 0.30662. 
+
+slope: For every unit increase in the difference between white and Black education rates, the incarceration rate ratio decreases by 0.08564. This indicates a negative relationship: as the difference in education rates increases (i.e., as white individuals have higher educational attainment compared to Black individuals), the white-to-Black incarceration rate ratio tends to decrease.  
+
+p-value: 0.0843: The p-value for this variable is 0.0843, which is slightly above the typical 0.05 threshold for statistical significance. This means that the relationship between the difference in education rates and the incarceration rate ratio is weakly significant (at the 0.10 level)
+
+```{r}
+model_white_Hispanic <- lm(White.Hisp.inc.rate ~ income.ratio.whit.hispanic, data = incar_merged)
+
+summary(model_white_Hispanic)
+
+```
+white_to_hispanic incarc. rate = 0.0504 - 0.002643(income.ratio.whit.hispanic)
+
+intercept: The intercept represents the expected value of the White-to-Hispanic incarceration rate ratio when the income ratio between Whites and Hispanics is zero. In practice, this is not a realistic situation because an income ratio of zero would indicate that one group has no income, but the intercept provides the starting point for the regression line
+
+slope: For every one-unit increase in the White-to-Hispanic income ratio, the White-to-Hispanic incarceration rate ratio is expected to decrease by 0.002643 units. This suggests that as the income disparity between Whites and Hispanics increases, the incarceration rate ratio becomes more favorable for Whites (i.e., fewer White incarcerations relative to Hispanic incarcerations). However, the effect size is very small and likely negligible.
+
+p-value: 0.59090: not statistically significant
+The data I collected for the Hispanic population for each state seems to be very off and I dont have time to collect more data for that race. 
+```{r}
+# Create a new data frame named Prison_rate with the state column and the two adjusted variables
+Prison_rate <- data.frame(
+  state = incar_merged$state,  # Include the state column
+  white_black_rate_prison = 1 / incar_merged$white.Black.inc.rate,  # Inverse of white.Black.inc.rate
+  white_hisp_rate_prison = 1 / incar_merged$White.Hisp.inc.rate     # Inverse of White.Hisp.inc.rate
+)
+
+# Replace Inf (in case of division by 0) or NaN with NA
+Prison_rate$white_black_rate_prison[is.infinite(Prison_rate$white_black_rate_prison)] <- NA
+Prison_rate$white_hisp_rate_prison[is.infinite(Prison_rate$white_hisp_rate_prison)] <- NA
+
+# View the new dataset
+print(Prison_rate)
+
+
+# Calculate the average of white_black_rate_prison, excluding NA values
+average_white_black_rate_prison <- mean(Prison_rate$white_black_rate_prison, na.rm = TRUE)
+
+# Calculate the average of white_hisp_rate_prison, excluding NA values
+average_white_hisp_rate_prison <- mean(Prison_rate$white_hisp_rate_prison, na.rm = TRUE)
+
+# Print the results in the specified format
+print(paste("National Average of White/Black Prison Rate:", average_white_black_rate_prison))
+print(paste("National Average of White/Hispanic Prison Rate:", average_white_hisp_rate_prison))
+
+```
+For the year 2020 for every 1 white incarcerated individual there are 6 incarcerated black individuals 
+
+```{r}
+# Create a new data frame named Income_rate by selecting the specific columns from incar_merged
+Income_rate <- incar_merged[, c("state", "income.ratio.whites.blacks", "income.ratio.whit.hispanic")]
+
+# View the new dataset
+print(Income_rate)
+
+average_income_ratio_black <- mean(Income_rate$income.ratio.whites.blacks, na.rm = TRUE)
+
+average_income_ratio_Hispanic <- mean(Income_rate$income.ratio.whit.hispanic, na.rm = TRUE)
+
+print(paste("National average income of white/black:", average_income_ratio_black))
+print(paste("National average income of white/hispanic:", average_income_ratio_Hispanic))
+                      
+```
+for the year 2020 White people on average made 2 times the national income of black individuals and 2.3 times the national income of hispanics 
